@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Install JDK 11
+      - name: install JDK 11
         uses: actions/setup-java@v3
         with:
           java-version: '11'
@@ -30,16 +30,17 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build Docker
-        run: docker build --platform linux/amd64 -t ${{secrets.DOCKERHUB_USERNAME}}/server .
+        run: docker build --platform linux/amd64 -t ${{ secrets.DOCKERHUB_USERNAME }}/server .
       - name: Push Docker
-        run: docker push ${{secrets.DOCKERHUB_USERNAME}}/server:latest
-        
-  deploy:
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/server:latest
+
+  # 빌드가 정상적으로 실행되어야 deploy가 실행됨
+  deploy:   
     needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Set target IP
-      - run: |
+        run: |
           CURRENT_UPSTREAM=$(curl -s "http://${{ secrets.NGINX_IP }}/env")
           echo $CURRENT_UPSTREAM
           if [ $CURRENT_UPSTREAM -ne blue -o $CURRENT_UPSTREAM -ne green ]; then
@@ -89,19 +90,16 @@ jobs:
           script_stop: true
           script: |
             docker exec -i nginxserver bash -c 'echo "set \$server_env ${{ env.TARGET_UPSTREAM }}"; >> /etc/nginx/conf.d/server-env.inc && service nginx reload'
-      
-      - name: Stop current server
+
+      - name: Stop Current server
         uses: appleboy/ssh-action@master
-          with:
-            username: ubuntu
-            host: ${{ secrets.CURRENT_IP }}
-            key: ${{ secrets.EC2_SSH_KEY }}
-            script_stop: true
-            script: |
-              docker stop prod1
-              docker stop prod2
-              docker rm prod1
-              docker rm prod2
-          
-        
-      
+        with:
+          username: ubuntu
+          host: ${{ secrets.CURRENT_IP }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
+          script: |
+            docker stop prod1
+            docker stop prod2
+            docker rm prod1
+            docker rm prod2
